@@ -1,0 +1,607 @@
+Sub openText()
+'
+' delete previous sheets
+Dim nWorkbook, i As Integer
+Dim name1 As String
+nWorkbook = ActiveWorkbook.Sheets.Count
+name1 = ActiveWorkbook.Sheets(1).Name
+ActiveWorkbook.Sheets.Add Before:=ActiveWorkbook.Worksheets(name1)
+' avoid the alert when close a workbook
+Application.DisplayAlerts = False
+
+For i = nWorkbook + 1 To 2 Step -1
+    ActiveWorkbook.Sheets(i).Delete
+Next i
+
+' openText Macro
+Dim myFile As String
+    Dim fileCount As Integer
+    Dim fileNames() As String
+    Dim finalrow As Long
+    folderPath = ActiveWorkbook.Path
+    myFile = Dir(folderPath & "\FBL5N_*.txt")   ' read first txt file
+    fileCount = 1   ' count file number
+    Do While myFile <> ""
+        myFile = Dir
+        If myFile = "" Then
+            Exit Do
+        End If
+        fileCount = fileCount + 1
+    Loop
+    
+    ReDim fileNames(fileCount)
+    fileNames(1) = Dir(folderPath & "\FBL5N_*.txt")
+    For i = 2 To fileCount
+        myFile = Dir
+        fileNames(i) = myFile
+    Next
+    'MsgBox (folderPath & "  " & fileCount & "  " & fileNames(1) & "  " & fileNames(2) & "  " & fileNames(3))
+    
+    For j = 1 To fileCount
+        Workbooks.openText Filename:= _
+            folderPath & "\" & fileNames(j) _
+            , Origin:=936, StartRow:=1, DataType:=xlDelimited, TextQualifier:= _
+            xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=True, Semicolon:=False, _
+            Comma:=False, Space:=False, Other:=False, TrailingMinusNumbers:=True
+        Rows("1:8").Select
+        Selection.Delete shift:=xlUp
+        Columns("A:A").Select
+        Selection.Delete shift:=xlToLeft
+        Columns("A:A").Select
+        Selection.Delete shift:=xlToLeft
+        Columns("C:C").Select
+        Selection.Delete shift:=xlToLeft
+        Rows("2:2").Select
+        Selection.Delete shift:=xlUp
+        finalrow = ActiveSheet.UsedRange.SpecialCells(xlCellTypeLastCell).Row
+        ActiveSheet.Range("$A$2:$X$" & finalrow).AutoFilter _
+          Field:=1, _
+          Criteria1:="", _
+          Operator:=xlFilterValues
+        Range("$A$2:$A$" & finalrow).SpecialCells(xlCellTypeVisible).Select
+        Selection.EntireRow.Delete
+        If j = 1 Then
+            ActiveSheet.Rows(1).Select
+            Selection.Copy
+            Windows("FBL5N Macro.xlsm").Activate
+            ActiveWorkbook.Sheets(1).Range("A1").Select
+            ActiveSheet.Paste
+            ' eliminate "." in header cells
+            For i = 1 To 24
+                Cells(1, i) = Replace(Cells(1, i), ".", "")
+            Next i
+            Windows(fileNames(1)).Activate
+            ActiveWorkbook.Sheets(1).Select
+        End If
+        endRow = ActiveSheet.Cells(Rows.Count, 1).End(xlUp).Row
+        ActiveSheet.Range("A2:X" & endRow).Select
+        Selection.Copy
+        Windows("FBL5N Macro.xlsm").Activate
+        ActiveWorkbook.Sheets(1).Select
+        finalrow = ActiveSheet.Cells(Rows.Count, 1).End(xlUp).Row
+        ActiveSheet.Range("A" & finalrow + 1).Select
+        ActiveSheet.Paste
+        'excelBook = Replace(fileNames(j), ".txt", "")
+        Windows(fileNames(j)).Close savechanges:=False
+     Next
+     Windows("FBL5N Macro.xlsm").Activate
+     ' the final Row of FBL5N after all txt. files are loaded
+     finalrow = ActiveWorkbook.Sheets(1).Cells(Rows.Count, 1).End(xlUp).Row
+     
+    ' opentext "KNB1.txt", vlookup ---> RS Name in Y-Column
+    Range("AB1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 52377
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    ActiveCell.FormulaR1C1 = "RS NAME"
+    
+    ' opentext in a new workbook
+    KNB1_Path = ActiveWorkbook.Path
+    Dim nameKNB1 As String
+    Workbooks.openText Filename:= _
+            KNB1_Path & "\" & "KNB1.txt" _
+            , Origin:=936, StartRow:=1, DataType:=xlDelimited, TextQualifier:= _
+            xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=True, Semicolon:=False, _
+            Comma:=False, Space:=False, Other:=False, TrailingMinusNumbers:=True
+    nameKNB1 = ActiveWorkbook.Name
+    Columns("A:A").Select
+    Selection.Delete shift:=xlToLeft
+    Range("1:3,5:5").Select
+    Selection.Delete shift:=xlUp
+    Range("C1").Select
+    ActiveCell.FormulaR1C1 = "RS Name"
+    Dim KNB1FinalRow As Long
+    KNB1FinalRow = ActiveWorkbook.Sheets(1).Cells(Rows.Count, 1).End(xlUp).Row
+    
+    ' open "Input Data (Clearing).xlsx"
+    Workbooks.Open Filename:=KNB1_Path & "\Input Data (Clearing).xlsx"
+    ' nameKNB1 is the name of KNB1-Workbook
+    Workbooks(nameKNB1).Activate
+    Range("C2").Select
+    ActiveCell.FormulaR1C1 = _
+        "=VLOOKUP(RC[-1],'[Input Data (Clearing).xlsx]List of Accounting Clerk'!C5:C7,3,0)"
+    Range("C2").Select
+    Selection.AutoFill Destination:=Range("C2:C" & KNB1FinalRow)
+    Range("C2:C" & KNB1FinalRow).Select
+    ' delete formula and only leave behind the values
+    Selection.Value = Selection.Value
+
+    Application.CutCopyMode = False
+    Workbooks.Open Filename:=KNB1_Path & "\FBL5N Macro.xlsm"
+    Range("AB2").Select
+    ' Here: notice that workbooks.openfile ("KNB1.txt") ---> workbook.name is also "KBN1.txt"
+    ' column"AB" [-26] --> B-Column(Account == Customer)
+    ActiveCell.FormulaR1C1 = "=VLOOKUP(RC[-26],KNB1.txt!C1:C3,3,0)"
+    Range("AB2").Select
+    Selection.AutoFill Destination:=Range("AB2:AB" & finalrow)
+    Range("AB2:AB" & finalrow).Select
+    ' delete formula and only leave behind the values
+    Selection.Value = Selection.Value
+    Application.CutCopyMode = False
+    Workbooks(nameKNB1).Close savechanges:=False
+     
+    Application.DisplayAlerts = True
+     
+    Windows("FBL5N Macro.xlsm").Activate
+    'fill dark green color to headers
+    Sheets(1).Name = "FBL5N"
+    Sheets("FBL5N").Range("A1:X1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = RGB(153, 204, 0)
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    'fill red color to headers of criteria Columns
+    Sheets(1).Name = "FBL5N"
+    Sheets("FBL5N").Range("A1,B1,E1,H1,K1,N1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = RGB(255, 0, 0)
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    
+    Sheets("FBL5N").Select
+    finalrow = Cells(Rows.Count, 1).End(xlUp).Row
+    
+        ' sort worksheet "FBL5N" in descending order, in order to display the lastest date on top of this sheet
+    ActiveWorkbook.Worksheets("FBL5N").Sort.SortFields.Clear   'delete previous sort fields
+    ActiveWorkbook.Worksheets("FBL5N").Sort.SortFields.Add2 Key:=Range("A2:A" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'Doc. Date
+    ActiveWorkbook.Worksheets("FBL5N").Sort.SortFields.Add2 Key:=Range("B2:B" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'Net Due Date
+    ActiveWorkbook.Worksheets("FBL5N").Sort.SortFields.Add2 Key:=Range("J2:J" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'CoCode
+    ActiveWorkbook.Worksheets("FBL5N").Sort.SortFields.Add2 Key:=Range("I2:I" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'Account
+    With ActiveWorkbook.Worksheets("FBL5N").Sort     '[execution] sort the data within range "A1:O_end"
+        .SetRange Range("A1:AB" & finalrow)
+        .Header = xlYes           ' Specifiy that the first row contains headers
+        .MatchCase = False          ' MatchCase: Set to True to perform a case-sensitive sort, or set to False to perform a non-case-sensitive sort
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin    ' xlPinYin: sort by Pinyin;  xlStroke: sort by number of BiHua
+        .Apply                   ' execute this sort() method
+    End With
+    Sheets(1).Name = "FBL5N"
+    ActiveSheet.Columns.EntireColumn.AutoFit
+    
+    Range("A2").Select
+    Range(Selection, Selection.End(xlDown)).Select
+    Selection.NumberFormat = "0000"
+
+    Range("K2").Select
+    Range(Selection, Selection.End(xlDown)).Select
+    Selection.NumberFormat = "00"
+	
+End Sub
+
+
+
+
+
+Sub generate_Pay_Inv()
+'
+' dataProcess Macro
+'
+    ' Data Extraction Process: Start
+    ' Windows("FBL5N.xlsm").Activate
+    Sheets("FBL5N").Select
+    Dim finalrow As Long
+    finalrow = Cells(Rows.Count, 1).End(xlUp).Row
+    
+
+    ' generate worksheets "Payment" and "Invoice"
+    Sheets.Add after:=ActiveSheet
+    Sheets(Worksheets.Count).Select
+    ActiveSheet.Name = "Payment"
+    Sheets.Add after:=ActiveSheet
+    Sheets(Worksheets.Count).Select
+    ActiveSheet.Name = "Invoice"
+    ' workbook("Input Data (Clearing).xlsx").sheets("Template")
+    Windows("Input Data (Clearing).xlsx").Activate
+    Dim companyCode(), docType1(), docType2(), postKeyPay(), postKeyInv() As String
+    Dim lastrow As Long
+    ActiveWorkbook.Sheets("Template").Select
+    ' read in company code and store them in array "companyCode()",  G-column
+    lastrow = Range("G1").End(xlDown).Row
+    ReDim companyCode(lastrow - 2)
+    For pp = 2 To lastrow
+        companyCode(pp - 2) = Range("G" & pp).Value
+    Next
+    'read in the 1.st document types and store them in array "docType1()",  I-column
+    lastrow = Range("I1").End(xlDown).Row
+    ReDim docType1(lastrow - 2)
+    For pp = 2 To lastrow
+        docType1(pp - 2) = Range("I" & pp).Value
+    Next
+    'read in the 2.nd document types and store them in array "docType2()", M-column
+    lastrow = Range("M1").End(xlDown).Row
+    ReDim docType2(lastrow - 2)
+    For pp = 2 To lastrow
+        docType2(pp - 2) = Range("M" & pp).Value
+    Next
+    ' read in posting keys of payment, store them in array "postKeyPay()",  K-column
+    lastrow = Range("K1").End(xlDown).Row
+    ReDim postKeyPay(lastrow - 2)
+    For pp = 2 To lastrow
+        postKeyPay(pp - 2) = Range("K" & pp).Value
+    Next
+    ' read in posting keys of Invoice, store them in array "postKeyInv()",  O-column
+    lastrow = Range("O1").End(xlDown).Row
+    ReDim postKeyInv(lastrow - 2)
+    For pp = 2 To lastrow
+        postKeyInv(pp - 2) = Range("O" & pp).Value
+    Next
+    
+    
+    ' paste the corresponding data onto it
+    Windows("FBL5N Macro.xlsm").Activate
+    Sheets("FBL5N").Select
+    'Criteria1:=Array("DA", "DB", "DZ", "DH"): array "docType1"
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=8, _
+      Criteria1:=docType1, _
+      Operator:=xlFilterValues
+    'Criteria1:=Array("14", "15", "16"): array "postKeyPay"
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=11, _
+      Criteria1:=postKeyPay, _
+      Operator:=xlFilterValues
+    Range("A1:AB" & finalrow).SpecialCells(xlCellTypeVisible).Select
+    Selection.Copy
+    Sheets("Payment").Select
+    ActiveCell.PasteSpecial xlPasteAll, xlPasteSpecialOperationNone, True, False  ' 4 parameters of PasteSpecial: (Paste, Operation, SkipBlanks, Transpose)
+    
+    ' paste the corresponding data onto worksheet "Invoice"
+    Sheets("FBL5N").Select
+    ActiveSheet.ShowAllData
+    'Criteria1:=Array("RV", "RW", "RU", "RR", "DR", "I3", "I4"): array "docType2"
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=8, _
+      Criteria1:=docType2, _
+      Operator:=xlFilterValues
+    'Criteria1:=Array("01", "04"): array "postKeyInv"
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=11, _
+      Criteria1:=postKeyInv, _
+      Operator:=xlFilterValues
+    'Criteria1:=Array("1", "5", "6", "7", "8", "9", "10", "11", "12", "177", "178", "543", "784", "1016", "1223", "1264", "1358", _
+                       "1489", "1671", "2718", "2757", "3189", "3255", "3321", "3322", "3323", "3324", "3325", "3338", "3339", _
+                       "3361", "3373", "3399", "3527", "3619"):   array "companyCode"
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=1, _
+      Criteria1:=companyCode, _
+      Operator:=xlFilterValues
+    Range("$A$1:$AB$" & finalrow).SpecialCells(xlCellTypeVisible).Select
+    Selection.Copy
+    Sheets("Invoice").Select
+    
+    ActiveCell.PasteSpecial xlPasteAll, xlPasteSpecialOperationNone, True, False
+    ' finalRowInvoice: current index of final row in worksheet "Invoice"
+    finalRowInvoice = Cells(Rows.Count, 1).End(xlUp).Row
+    
+    Sheets("FBL5N").Select
+    ActiveSheet.ShowAllData
+    'Criteria1:=Array("DA", "DB", "DH", "DZ"): array "docType1"
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=8, _
+      Criteria1:=docType1, _
+      Operator:=xlFilterValues
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=11, _
+      Criteria1:=Array("04"), _
+      Operator:=xlFilterValues
+    'Criteria1:=Array("1", "5", "6", "7", "8", "9", "10", "11", "12", "177", "178", "543", "784", "1016", "1223", "1264", "1358", _
+                       "1489", "1671", "2718", "2757", "3189", "3255", "3321", "3322", "3323", "3324", "3325", "3338", "3339", _
+                       "3361", "3373", "3399", "3527", "3619"):   array "companyCode"
+    ActiveSheet.Range("$A$1:$AB$" & finalrow).AutoFilter _
+      Field:=1, _
+      Criteria1:=companyCode, _
+      Operator:=xlFilterValues
+    ' Copy without Column Names, so range starts from the 2.nd Row here
+    Range("$A$2:$AB$" & finalrow).SpecialCells(xlCellTypeVisible).Select
+    Selection.Copy
+    Sheets("Invoice").Select
+    Range("$A$" & finalRowInvoice + 1).Select
+    Selection.PasteSpecial xlPasteAll, xlPasteSpecialOperationNone, True, False
+    
+    Sheets("FBL5N").ShowAllData
+    
+    ActiveWorkbook.Worksheets("Invoice").Sort.SortFields.Clear   'delete previous sort fields
+    ActiveWorkbook.Worksheets("Invoice").Sort.SortFields.Add2 Key:=Range("A2:A" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'Doc. Date
+    ActiveWorkbook.Worksheets("Invoice").Sort.SortFields.Add2 Key:=Range("B2:B" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'Net Due Date
+    ActiveWorkbook.Worksheets("Invoice").Sort.SortFields.Add2 Key:=Range("I2:I" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'CoCode
+    ActiveWorkbook.Worksheets("Invoice").Sort.SortFields.Add2 Key:=Range("J2:J" & finalrow _
+        ), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal               'Account
+    With ActiveWorkbook.Worksheets("Invoice").Sort     '[execution] sort the data within range "A1:O_end"
+        .SetRange Range("A1:AB" & finalrow)
+        .Header = xlYes           ' Specifiy that the first row contains headers
+        .MatchCase = False          ' MatchCase: Set to True to perform a case-sensitive sort, or set to False to perform a non-case-sensitive sort
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin    ' xlPinYin: sort by Pinyin;  xlStroke: sort by number of BiHua
+        .Apply                   ' execute this sort() method
+    End With
+                       
+    ' search matched items in "Payment" and "Invoice"
+    Dim finalRowPay, finalRowInv, finalRowRes As Long
+    Sheets("Payment").Select
+    Range("Y1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 52377
+    End With
+    ActiveCell.FormulaR1C1 = "Group"
+    Range("Z1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 52377
+    End With
+    ActiveCell.FormulaR1C1 = "Category"
+    finalRowPay = ActiveSheet.Cells(Rows.Count, 1).End(xlUp).Row
+    Sheets("Invoice").Select
+    Range("Z1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 52377
+    End With
+    ActiveCell.FormulaR1C1 = "Group"
+    Range("AA1").Select
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 52377
+    End With
+    ActiveCell.FormulaR1C1 = "Category"
+    finalRowInv = ActiveSheet.Cells(Rows.Count, 1).End(xlUp).Row
+     
+    ' Add a column "Invoice (N-Column) is used ?" to show if the corresponding invoice item has been matched
+    Sheets("Invoice").Select
+    Range("Y1").Select
+    ActiveCell.FormulaR1C1 = "Invoice (N-Column) is Used ?"
+    Columns("Y:Y").ColumnWidth = 24
+    Range("$Y$2:$Y$" & finalRowInv).Select
+    Selection.Value = False
+    
+    Dim i, m, p, group, n, j As Long
+    Dim AiPay, BiPay As Long
+    Dim cell As Range
+    Dim a, b, rest As Double
+    Dim bool As Boolean
+    
+    group = 0
+    ' search expected items through traversing each row in "Payment" & ignoring the 1.st title row
+    For i = 2 To finalRowPay Step 1
+        Sheets("Payment").Select
+        AiPay = ActiveSheet.Range("$A$" & i)
+        BiPay = ActiveSheet.Range("$B$" & i)
+        Sheets("Invoice").Select
+        ' delete the filter used in the last loop
+        ActiveSheet.AutoFilterMode = False
+        ' finalRowRes: value may change after each loop step of "i",
+        'finalRowRes = Sheets("Result").Cells(Rows.Count, 1).End(xlUp).Row
+        Sheets("Invoice").Select
+        ActiveSheet.Range("$A$1:$Y$" & finalRowInv).AutoFilter _
+          Field:=1, _
+          Criteria1:=AiPay
+        ActiveSheet.Range("$A$1:$Y$" & finalRowInv).AutoFilter _
+          Field:=2, _
+          Criteria1:=BiPay
+        On Error Resume Next  ' Error: Filtered result is empty ?
+        ' foundItems: the range variable that contains all found items in "Invoice"
+        Sheets("Invoice").Range("$N$2:$N$" & finalRowInv).SpecialCells(xlCellTypeVisible).Select
+        ' m: the number of rows in "Payment" that are found identical with A_i & B_i in "Invoice"
+        m = Selection.Rows.Count
+        p = 0
+        ' a: L_i in "Payment"
+        a = Val(Replace(Replace(Sheets("Payment").Range("N" & i), ".", " "), ",", "."))
+        If m > 0 Then
+        
+            For n = 1 To m Step 1
+                ' check if the current item of "Invoice" has already been used, if not, do "a + b"
+                bool = Sheets("Invoice").Range("$Y$" & Selection.Rows(n).Row).Value
+                If bool = False Then
+                    ' b: L_cell in "foundItems" of "Invoice"
+                    b = Val(Replace(Replace(Selection.Rows(n), ".", " "), ",", "."))
+                    If n = 1 Then
+                        rest = a + b
+                    Else
+                        rest = rest + b
+                    End If
+                    ' p: represents how many items in range "foundItems" will be finally copied onto worksheet "Result"
+                    p = p + 1
+                    ' company code:Range("A" & i).Value; company code == "0225" OR "0359" , tolerance = 30 USD
+                    If Range("A" & i).Value = "0225" Or Range("A" & i).Value = "0359" Then
+
+                        If -30 < rest And rest < 30 Then
+                            ' group index
+                            group = group + 1
+                            Sheets("Payment").Range("$Y$" & i).Value = group
+                            Sheets("Payment").Range("$Z$" & i).Value = "Payment"
+                            ' copy the i-th row in "Payment" to worksheet "Result"
+                            'Sheets("Payment").Range("$A$" & i).EntireRow.Copy
+                            'Sheets("Result").Range("A" & finalRowRes + 1).EntireRow.Select
+                            'Range("A" & finalRowRes + 1).Activate
+                            'ActiveSheet.Paste
+                            'Sheets("Result").Range("Y" & finalRowRes + 1).Value = group
+                            ' copy p rows in "foundItems" to worksheet "Result"
+                            For j = 1 To n Step 1
+                                ' once this item of "Invoice" is used, change its logic label so that this item would be excluded in following loops
+                                Sheets("Invoice").Range("$N$2:$N$" & finalRowInv).SpecialCells(xlCellTypeVisible).Select
+                                Sheets("Invoice").Range("$Y$" & Selection.Rows(j).Row).Value = True
+                                Sheets("Invoice").Range("$Z$" & Selection.Rows(j).Row).Value = group
+                                Sheets("Invoice").Range("$AA$" & Selection.Rows(j).Row).Value = "Invoice"
+                                'Sheets("Invoice").Range("$A$" & Selection.Rows(j).Row).EntireRow.Copy
+                                'Sheets("Result").Range("A" & finalRowRes + j + 1).EntireRow.Select
+                                'Range("A" & finalRowRes + j + 1).Activate
+                                'ActiveSheet.Paste
+    
+                            Next j
+                            
+                            Exit For   ' exit For n = 1 To m Step 1
+                            
+                        End If
+                    ' company code == "2113", "4002", "4366" , tolerance = 2 USD
+                    Else
+                        If -2 < rest And rest < 2 Then
+                            ' group index
+                            group = group + 1
+                            Sheets("Payment").Range("$Y$" & i).Value = group
+                            Sheets("Payment").Range("$Z$" & i).Value = "Payment"
+                            ' copy the i-th row in "Payment" to worksheet "Result"
+                            'Sheets("Payment").Range("$A$" & i).EntireRow.Copy
+                            'Sheets("Result").Range("A" & finalRowRes + 1).EntireRow.Select
+                            'Range("A" & finalRowRes + 1).Activate
+                            'ActiveSheet.Paste
+                            'Sheets("Result").Range("Y" & finalRowRes + 1).Value = group
+                            ' copy p rows in "foundItems" to worksheet "Result"
+                            For j = 1 To n Step 1
+                                ' once this item of "Invoice" is used, change its logic label so that this item would be excluded in following loops
+                                Sheets("Invoice").Range("$N$2:$N$" & finalRowInv).SpecialCells(xlCellTypeVisible).Select
+                                Sheets("Invoice").Range("$Y$" & Selection.Rows(j).Row).Value = True
+                                Sheets("Invoice").Range("$Z$" & Selection.Rows(j).Row).Value = group
+                                Sheets("Invoice").Range("$AA$" & Selection.Rows(j).Row).Value = "Invoice"
+                                'Sheets("Invoice").Range("$A$" & Selection.Rows(j).Row).EntireRow.Copy
+                                'Sheets("Result").Range("A" & finalRowRes + j + 1).EntireRow.Select
+                                'Range("A" & finalRowRes + j + 1).Activate
+                                'ActiveSheet.Paste
+    
+                            Next j
+                            
+                            Exit For   ' exit For n = 1 To m Step 1
+                            
+                        End If
+                    
+                    End If
+                End If
+                
+            Next n
+            
+        End If
+        
+    Next i
+    Sheets("Payment").Select
+    Selection.Range("Y1:Z1").Interior.ColorIndex = RGB(255, 215, 0)
+    ActiveSheet.Columns.EntireColumn.AutoFit
+    Sheets("Invoice").Select
+    Selection.Range("Y1:AA1").Interior.ColorIndex = RGB(255, 215, 0)
+    ActiveSheet.AutoFilterMode = False
+    ActiveSheet.Columns.EntireColumn.AutoFit
+    
+    Windows("Input Data (Clearing).xlsx").Activate
+    ActiveWorkbook.Close savechanges:=False
+
+End Sub
+
+
+
+
+
+
+Sub Paste_To_Result()
+'
+    Dim finalRowPay, finalRowInv, finalRowRes As Long
+    finalRowPay = Sheets("Payment").Cells(Rows.Count, 1).End(xlUp).Row
+    finalRowInv = Sheets("Invoice").Cells(Rows.Count, 1).End(xlUp).Row
+    Sheets("Invoice").Select
+    Sheets.Add after:=ActiveSheet
+    Sheets(Worksheets.Count).Select
+    ActiveSheet.Name = "Result"
+    Sheets("Payment").Select
+    Application.CutCopyMode = False
+    Columns("AA:AA").Select
+    Selection.Delete shift:=xlToLeft
+    Rows("1:1").Select
+    Selection.Copy
+    Sheets("Result").Select
+    Range("A1").Select
+    ActiveSheet.Paste
+    
+    
+    ' delete the logic value column
+    Sheets("Invoice").Select
+    ActiveSheet.AutoFilterMode = False
+    Columns("Y:Y").Select
+    Selection.Delete shift:=xlToLeft
+    
+    Dim rr, groupNum As Long
+    groupNum = Sheets("Invoice").Application.Max(Range("$Y$2:$Y$" & finalRowInv))
+    For rr = 1 To groupNum Step 1
+        Sheets("Payment").Select
+        ActiveSheet.Range("$A$1:$AA$" & finalRowPay).AutoFilter _
+          Field:=25, _
+          Criteria1:=rr
+        Range("$A$2:$AA$" & finalRowPay).SpecialCells(xlCellTypeVisible).Select
+        Selection.Copy
+        ' finalRowRes: value may change after each loop step of "i",
+        finalRowRes = Sheets("Result").Cells(Rows.Count, 1).End(xlUp).Row
+        Sheets("Result").Select
+        Range("A" & finalRowRes + 1).Select
+        ActiveSheet.Paste
+        ' [blue] interior color
+        Selection.Interior.ColorIndex = 37
+        Sheets("Payment").Select
+        ActiveSheet.AutoFilterMode = False
+
+        Sheets("Invoice").Select
+        ActiveSheet.Range("$A$1:$AA$" & finalRowInv).AutoFilter _
+          Field:=25, _
+          Criteria1:=rr
+        Range("$A$2:$AA$" & finalRowInv).SpecialCells(xlCellTypeVisible).EntireRow.Select
+        Selection.Copy
+        ' finalRowRes: value may change after each loop step of "i",
+        finalRowRes = Sheets("Result").Cells(Rows.Count, 1).End(xlUp).Row
+        Sheets("Result").Select
+        Range("A" & finalRowRes + 1).Select
+        ActiveSheet.Paste
+        Sheets("Invoice").Select
+        ActiveSheet.AutoFilterMode = False
+
+    Next rr
+    
+    ' fit the data to the format that can be recognized by SAP: 1.A column: CoCode & 2.B Column: Account
+    Sheets("Result").Select
+    Dim lastrow As Long
+    lastrow = Sheets("Result").Cells(Rows.Count, 1).End(xlUp).Row
+    Range("$A$2:$A$" & lastrow).Select
+    Selection.NumberFormat = "0000"
+    Range("$B$2:$B$" & lastrow).Select
+    Selection.NumberFormat = "0000000000"
+    Sheets("Result").Select
+    ActiveSheet.Columns.EntireColumn.AutoFit
+    
+End Sub
+
+
